@@ -11,7 +11,7 @@
             - Instruction above found at this link: https://davidsimpson.me/2013/02/26/installing-r-on-os-x/
 	* mlbench - Machine Learning Benchmark Problems:
 	    - http://cran.r-project.org/web/packages/mlbench/index.html
-            - R CMD INSTALL mlbench_2r.1-1.tar
+	    - R CMD INSTALL mlbench_2r.1-1.tar
 # Data:
 	* Data will be created using mlbench
         - This stack overflow post shows the 6 different datasets that will be potentially used:
