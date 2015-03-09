@@ -1,4 +1,3 @@
-import sys
 import kdtree
 import dbscan
 import vptree
@@ -20,39 +19,20 @@ def _eps_vp_neighborhood(m,point_id,eps):
     neighbors = vptree.get_all_in_range(tree, q, eps)
     return neighbors
 
-def _eps_kd_neighborhood(m,point_id,eps):
-    tmp_data = m[point_id]
-    tmp_data = tmp_data[:, np.newaxis]
-    tmp_zero = np.zeros(((data.shape[1]-1), 2))
-    tmp_zero[:,:-1] = (tmp_data[1:] - eps)
-    tmp_zero[:,1:] = (tmp_data[1:] + eps)
-    tmp_data = tuple([tuple(tmp_zero[i]) for i in range(0,len(tmp_zero))])
-    neighbors = kdtree.query(tmp_data, tree)
-    return np.array(neighbors)[:0].tolist()
+#def _eps_kd_neighborhood(m,point_id,eps):
+    
 
-def _region_query(structure, m, point_id, eps):
+def _region_query(m, point_id, eps):
     n_points = m.shape[1]
-    seed = []
-
-    if structure == "vp":
-        neighbors = _eps_vp_neighborhood(m, point_id, eps)
-        seeds = ([x.idx for d,x in neighbors])
-    elif structure == "kd":
-        neighbors = _eps_kd_neighborhood(m, point_id, eps)
-        seeds = (neighbors)
-    else:
-        for i in range(0, n_points):
-            if not i == point_id:
-                if _eps_neighborhood(m[:,point_id], m[:,i], eps):
-                    seeds.append(i)
-
+    neighbors = _eps_vp_neighborhood(m, point_id, eps)
+    seeds = ([x.idx for d,x in neighbors])
     if debug:
         print "Seed: " + str(seeds)
         print "-----------------------------------------"
     return seeds
 
-def _expand_cluster(structure, m, classifications, point_id, cluster_id, eps, min_points):
-    seeds = _region_query(structure, m, point_id, eps)
+def _expand_cluster(m, classifications, point_id, cluster_id, eps, min_points):
+    seeds = _region_query(m, point_id, eps)
     if len(seeds) < min_points:
         classifications[point_id] = NOISE
         return False
@@ -63,11 +43,11 @@ def _expand_cluster(structure, m, classifications, point_id, cluster_id, eps, mi
             
         while len(seeds) > 0:
             current_point = seeds[0]
-            results = _region_query(structure, m, current_point, eps)
+            results = _region_query(m, current_point, eps)
             if len(results) >= min_points:
                 for i in range(0, len(results)):
                     result_point = int(results[i])
-                    #print "Index: " + str(result_point)
+                    print "Index: " + str(result_point)
                     if classifications[result_point] == UNCLASSIFIED or \
                        classifications[result_point] == NOISE:
                         if classifications[result_point] == UNCLASSIFIED:
@@ -76,7 +56,7 @@ def _expand_cluster(structure, m, classifications, point_id, cluster_id, eps, mi
             seeds = seeds[1:]
         return True
         
-def dbscan(structure, m, eps, min_points):
+def dbscan(structre, m, eps, min_points):
     """
     Inputs:
     m - A matrix whose columns are feature vectors
@@ -89,18 +69,19 @@ def dbscan(structure, m, eps, min_points):
     """
     cluster_id = 1
     n_points = m.shape[0]
+    print "N_points: " + str(m.shape)
     classifications = [UNCLASSIFIED] * n_points
     for point_id in range(1, n_points):
         if classifications[point_id] == UNCLASSIFIED:
-            if _expand_cluster(structure,m, classifications, point_id, cluster_id, eps, min_points):
+            if _expand_cluster(m, classifications, point_id, cluster_id, eps, min_points):
                 cluster_id = cluster_id + 1
     return classifications
 
 
-def main(): 
-    eps = float(sys.argv[1])
-    min_points = int(sys.argv[2])
-    structure = sys.argv[3]
+def main():    
+    eps = 10
+    min_points = 2
+    structure = 'kd'
 
     csv_import = np.loadtxt('data.csv',delimiter=',', skiprows=1)
     data = csv_import
@@ -116,11 +97,42 @@ def main():
         points = [x[0:3] for x in  data]
         tree = kdtree.kdtree(points)
 
-    # Transpose the matrix
-    results = dbscan(structure, data, eps, min_points)
-    tmp = np.array(results)[:, np.newaxis]
-    data[:,-1:] = tmp
-    np.savetxt('output.csv', data, delimiter=',')
+
+    print "Tree: " + str(tree)
+    tmp_data = data[0]
+    #print "tmp_data: " + str(tmp_data)
+    tmp_data = tmp_data[:, np.newaxis]
+    #print "tmp_data: " + str(tmp_data)   
+    #print "Shape: " + str(data.shape)[1]
+    tmp_zero = np.zeros(((data.shape[1]-1), 2))
+    #print "tmp_zero: " + str(tmp_zero.shape)
+    tmp_zero[:,:-1] = (tmp_data[1:] - eps)
+    
+    tmp_zero[:,1:] = (tmp_data[1:] + eps)
+    #tmp_data = tmp_zero
+    #print "tmp_data: " + str(tuple(tmp_data.tolist()))  
+    tmp_data = tuple([tuple(tmp_zero[i]) for i in range(0,len(tmp_zero))])
+    #print "test: " + str(test) 
+
+
+    results = kdtree.query(tmp_data, tree)
+    for x in results:
+        print "x--------: " + str(x[0])
+
+    # Loop through until all points has been visited
+    #q = vptree.NDPoint(data[0][1:3])
+    #neighbors = vptree.get_all_in_range(tree, q, eps)
+
+    #print "query:"
+    #print "\t", q
+    #print "nearest neighbors: "
+    #for d, n in neighbors:
+    #    print "\t", n
+
+   # print points[0]
+ 
+    #results = dbscan(structure, data, eps, min_points)
+    #print "Results: " + str(results)
 
 if  __name__ =='__main__':
 	main()

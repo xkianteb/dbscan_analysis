@@ -6,7 +6,16 @@ import operator
 from bisect import insort
 from bisect import bisect
 
-class Point:pass
+class Point:
+    def __init__():
+        pass
+
+    def __init__(self, x, idx=None, index):
+        self.data = x
+        self.idx = idx
+        self.baseIndex = index
+    def __repr__(self):
+        return "NDPoint(idx=%s, x=%s)" % (self.idx, self.x)
 class Node:
 	#node.pointCount = len(points)
 	#node.points = None
