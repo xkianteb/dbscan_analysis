@@ -3,6 +3,7 @@ import kdtree
 import dbscan
 import vptree
 import numpy as np
+import math
 
 tree = []
 UNCLASSIFIED = False
@@ -13,7 +14,7 @@ def _dist(p,q):
 	return math.sqrt(np.power(p-q,2).sum())
 
 def _eps_neighborhood(p,q,eps):
-	return _dist(p,q) < ep
+	return _dist(p,q) < eps
 
 def _eps_vp_neighborhood(m,point_id,eps):
     q = vptree.NDPoint(m[point_id][1:3])
@@ -32,8 +33,8 @@ def _eps_kd_neighborhood(m,point_id,eps):
 
 def _region_query(structure, m, point_id, eps):
     n_points = m.shape[1]
-    seed = []
-
+    seeds = []
+ 
     if structure == "vp":
         neighbors = _eps_vp_neighborhood(m, point_id, eps)
         seeds = ([x.idx for d,x in neighbors])
@@ -77,20 +78,16 @@ def _expand_cluster(structure, m, classifications, point_id, cluster_id, eps, mi
         return True
         
 def dbscan(structure, m, eps, min_points):
-    """
-    Inputs:
-    m - A matrix whose columns are feature vectors
-    eps - Maximum distance two points can be to be regionally related
-    min_points - The minimum number of points to make a cluster
-    
-    Outputs:
-    An array with either a cluster id number or dbscan.NOISE (None) for each
-    column vector in m.
-    """
-    cluster_id = 1
+    start = 1
     n_points = m.shape[0]
+    if structure == 'base':
+        start = 0
+        n_points = m.shape[1]
+      
+
+    cluster_id = 1
     classifications = [UNCLASSIFIED] * n_points
-    for point_id in range(1, n_points):
+    for point_id in range(start, n_points):
         if classifications[point_id] == UNCLASSIFIED:
             if _expand_cluster(structure,m, classifications, point_id, cluster_id, eps, min_points):
                 cluster_id = cluster_id + 1
@@ -105,19 +102,24 @@ def main():
     csv_import = np.loadtxt('data.csv',delimiter=',', skiprows=1)
     data = csv_import
     data[:,:1] = csv_import[:,:1] -1
+    results = []
 
     global tree
     if structure == 'vp':
         # Store the data in the VP Tree
         points = [vptree.NDPoint(x[1:3],x[0]) for x in  data] 
         tree = vptree.VPTree(points)
+        results = dbscan(structure, data, eps, min_points)
     elif structure == 'kd':
         # Store the data in the KD Tree
         points = [x[0:3] for x in  data]
         tree = kdtree.kdtree(points)
+        results = dbscan(structure, data, eps, min_points)
+    elif structure == 'base':
+        m = data[:,1:3].transpose()
+        results = dbscan(structure, m, eps, min_points)
 
     # Transpose the matrix
-    results = dbscan(structure, data, eps, min_points)
     tmp = np.array(results)[:, np.newaxis]
     data[:,-1:] = tmp
     np.savetxt('output.csv', data, delimiter=',')

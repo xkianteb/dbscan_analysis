@@ -18,8 +18,10 @@ def _eps_neighborhood(p,q,eps):
 
 def _region_query(m, point_id, eps):
     n_points = m.shape[1]
+    #print "n: " + str(m.shape)
     seeds = []
     for i in range(0, n_points):
+        #print "id : "+ str(point_id) + " | i: " + str(i)
         if not i == point_id:
             if _eps_neighborhood(m[:,point_id], m[:,i], eps):
                 seeds.append(i)
@@ -77,7 +79,13 @@ def dbscan(m, eps, min_points):
     return classifications
 
 def test_dbscan():
-    m = np.matrix('1 1.2 0.8 3.7 3.9 3.6 10; 1.1 0.8 1 4 3.9 4.1 10')
-    eps = 0.5
+    #m = np.matrix('1 1.2; 1.1 0.8; 1.0 1.8; 23 25; 100 101;1000 1234; 1290 2131; 1929 1212')
+    csv_import = np.loadtxt('data.csv',delimiter=',', skiprows=1)
+    data = csv_import
+    m = data[:,1:3].transpose()
+    eps = 0.09
     min_points = 2
-    assert dbscan(m, eps, min_points) == [1, 1, 1, 2, 2, 2, None]
+    print str(dbscan(m, eps, min_points) )
+
+if  __name__ =='__main__':
+    test_dbscan()
