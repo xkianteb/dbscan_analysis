@@ -1,149 +1,168 @@
-import sys
+#!/usr/bin/python
+# encoding: utf-8
 
+import numpy as np
 
-class Node:
-	pass
+__all__ = ["KDTree"]
 
-def kdtree(pointList, depth=0):
-	if not pointList:
-		return None
+debug = False
 
-	# Select axis based on depth so that axis cycles through all valid values
-	try:
-		k = (len(pointList[0]) -1)# Assumes all points have the same dimension
-	except:
-		k = pointList[0].dimension()
-	axis = (depth % k) + 1
+def square_distance(pointA, pointB):
+    # squared euclidean distance
+    print "A: " + str(pointA)
+    print "B: " + str(pointB)
+    A = pointA[1:]
+    B = pointB
+    return np.sum((A-B)**2)
 
-	# Sort point list to select median
-	pointList.sort(key=lambda x: x[axis])
-	median = len(pointList) // 2 # Choose median
+class KDTreeNode():
+    def __init__(self, point, left, right):
+        self.point = point
+        self.left = left
+        self.right = right
+    
+    def is_leaf(self):
+        return (self.left == None and self.right == None)
 
-	# Create node and construct subtrees
-	node = Node()
-	node.location = pointList[median]
-	node.axis = axis
-        node.label = pointList[median][0]
-	node.leftChild = kdtree(pointList[:median], depth+1)
-	node.rightChild = kdtree(pointList[median+1:], depth+1)
-	return node
+class KDTreeNeighbours():
+    """ Internal structure used in nearest-neighbours search.
+    """
+    def __init__(self,query_point,eps):
+        self.query_point = query_point
+        self.eps = eps # squared
+        self.current_best = []
 
-def fast_kdtree_constr(pointList):
-	if not pointList:
-		return None
-	try:
-		N = len(pointList[0]) # Assumes all points have the same dimension
-	except:
-		N = pointList[0].dimension()
-	
-	PTR = [i for i in range(len(pointList))]
-	
-	SortedList = []
-	for i in range(N):
-		SortedList.append([]); SortedList[i] = list(PTR)
+    def add(self, point):
+        sd = square_distance(point, self.query_point)
+        if debug:
+            print "sd: " + str(sd) + " | point: " + str(point)
+ 
+        if sd <= self.eps: 
+            if debug:
+                print "\t ---- Yes"
+            self.current_best.append([point])
+        return
+    
+    def get_best(self):
+        return [element[0] for element in self.current_best]
+        
+class KDTree():
+    """ KDTree implementation.
+    
+        Example usage:
+        
+            from kdtree import KDTree
+            
+            data = <load data> # iterable of points (which are also iterable, same length)
+            point = <the point of which neighbours we're looking for>
+            
+            tree = KDTree.construct_from_data(data)
+            nearest = tree.query(point, t=4) # find nearest 4 points
+    """
+    
+    def __init__(self, data):
+        def build_kdtree(point_list, depth):
+            # code based on wikipedia article: http://en.wikipedia.org/wiki/Kd-tree
+            if not point_list.any():
+                return None
 
-	del PTR
-	for i in range(N): # Sort point list
-		SortedList[i].sort(key=lambda x: pointList[x][i])
-	
-	return kdtreeConstr(pointList, SortedList)
+            # select axis based on depth so that axis cycles through all valid values
+            k = (len(point_list[0]) -1)
+            axis = (depth % k) + 1  # assumes all points have the same dimension
 
+            # sort point list and choose median as pivot point,
+            # TODO: better selection method, linear-time selection, distribution
+            #point_list.sort(key=lambda point: point[axis])
+            point_list = point_list[point_list[:,axis].argsort()]
+            median = len(point_list)/2 # choose median
+            if debug:
+                print "Points: -------------" 
+                print "Depth: " + str(depth)
+                print "Length: " + str(len(point_list[0]))
+                print "axis: " + str(axis)
+                print "Median: " + str(median)
+                print str(point_list)
+                print "---------------------"
 
-def kdtreeConstr(pointList, SortedList, depth=0):
-	if len(SortedList[0]) == 0:
-		return None
+            # create node and recursively construct subtrees
+            node = KDTreeNode(point=point_list[median],
+                              left=build_kdtree(point_list[0:median], depth+1),
+                              right=build_kdtree(point_list[median+1:], depth+1))
+            return node
+        
+        self.root_node = build_kdtree(data, depth=0)
+    
+    @staticmethod
+    def construct_from_data(data):
+        tree = KDTree(data)
+        return tree
 
-	# Select axis based on depth so that axis cycles through all valid values
-	try:
-		k = len(pointList[0]) # Assumes all points have the same dimension
-	except:
-		k = pointList[0].dimension()
-	axis = depth % k
+    def query(self, query_point, eps):
+        statistics = {'nodes_visited': 0, 'far_search': 0, 'leafs_reached': 0}
+        
+        #def nn_search(node, query_point, t, depth, best_neighbours):
+        def nn_search(node, query_point,depth, best_neighbours):
+            if node == None:
+                return
+            
+            statistics['nodes_visited'] += 1
+            
+            # if we have reached a leaf, let's add to current best neighbours,
+            # (if it's better than the worst one or if there is not enough neighbours)
+            if node.is_leaf():
+                statistics['leafs_reached'] += 1
+                best_neighbours.add(np.array(node.point))
+                return
+            
+            # this node is no leaf
+            
+            # select dimension for comparison (based on current depth)
+            #axis = depth % len(query_point)
+            k = len(query_point)
+            axis = (depth % k) + 1 
+            
+            # figure out which subtree to search
+            near_subtree = None # near subtree
+            far_subtree = None # far subtree (perhaps we'll have to traverse it as well)
+            
+            # compare query_point and point of current node in selected dimension
+            # and figure out which subtree is farther than the other
+            if query_point[axis-1] < node.point[axis]:
+                near_subtree = node.left
+                far_subtree = node.right
+            else:
+                near_subtree = node.right
+                far_subtree = node.left
 
-	# Select median
-	m = len(SortedList[axis]) // 2
-	median = SortedList[axis][m] # Choose median
+            # recursively search through the tree until a leaf is found
+            #nn_search(near_subtree, query_point, t, depth+1, best_neighbours)
+            nn_search(near_subtree, np.array(query_point), depth+1, best_neighbours)
 
-	# Create New SortedList
-	T = {}
-	for i in SortedList[0]:
-		T[i] = False
-	
-	newLists = ([], [])
-
-	for j in [0, 1]:
-		if j == 0:
-			for i in SortedList[axis][:m]:
-				T[i] = True
-		else:
-			for i in SortedList[axis][:m]:
-				T[i] = False
-			for i in SortedList[axis][m+1:]:
-				T[i] = True
-
-		for i in range(k):
-			newLists[j].append([])
-			if i == axis:
-				if j == 0:
-					newLists[0][i] = SortedList[axis][:m]
-				else:
-					newLists[1][i] = SortedList[axis][m+1:]
-			else:
-				for l in SortedList[i]:
-					if T[l]:
-						newLists[j][i].append(l)
-
-	List1, List2 = newLists[0], newLists[1]
-	del T; del SortedList; del newLists
-	
-	# Create node and construct subtrees
-	node = Node()
-	node.location = pointList[median]
-	node.axis = axis
-	node.leftChild = kdtreeConstr(pointList, List1, depth+1)
-	node.rightChild = kdtreeConstr(pointList, List2, depth+1)
-	return node
-
-
-
-def query(rec, node):
-	if node == None:
-		return
-	axis = node.axis
-	median = node.location[axis]
-	try:	# for Iso_rectangle, Iso_cuboid,...
-		low = rec.min_coord(axis)
-		high = rec.max_coord(axis)
-	except:
-		try:	# for bboxes
-			low = rec.min(axis)
-			high = rec.max(axis)
-		except:	# for tuples
-			low = rec[axis][0]
-			high = rec[axis][1]
-	if median >= low:
-		for point in query(rec, node.leftChild):
-			yield point
-	if median <= high:
-		for point in query(rec, node.rightChild):
-			yield point
-	try:	# for Iso_rectangle, Iso_cuboid,...
-		if rec.has_on_unbounded_side(node.location):
-			return
-	except:
-		try:
-			Dimension = node.location.dimension()
-		except:
-			Dimension = len(node.location)
-		for axis in range(Dimension):
-			c = node.location[axis]
-			try:
-				low = rec.min(axis)
-				high = rec.max(axis)
-			except:
-				low = rec[axis][0]
-				high = rec[axis][1]			
-			if c < low or c > high:
-				return
-	yield node.location
-
+            # while unwinding the recursion, check if the current node
+            # is closer to query point than the current best,
+            # also, until t points have been found, search radius is infinity
+            best_neighbours.add(np.array(node.point))
+            
+            # check whether there could be any points on the other side of the
+            # splitting plane that are closer to the query point than the current best
+            if (node.point[axis] - query_point[axis-1])**2 < best_neighbours.eps:
+                if debug:
+                    print "Distance: " + str((node.point[axis] - query_point[axis])**2)
+                statistics['far_search'] += 1
+                #nn_search(far_subtree, query_point, t, depth+1, best_neighbours)
+                nn_search(far_subtree, np.array(query_point), depth+1, best_neighbours)            
+ 
+            return
+        
+        # if there's no tree, there's no neighbors
+        if self.root_node != None:
+            #neighbours = KDTreeNeighbours(query_point, t)
+            neighbours = KDTreeNeighbours(np.array(query_point), eps)
+            #nn_search(self.root_node, query_point, t, depth=0, best_neighbours=neighbours)
+            nn_search(self.root_node, np.array(query_point), depth=0, best_neighbours=neighbours)
+            result = neighbours.get_best()
+        else:
+            result = []
+        
+        print statistics
+        return result

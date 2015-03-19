@@ -1,6 +1,5 @@
 import sys
-import kdtree
-import dbscan
+from kdtree import KDTree
 import vptree
 import numpy as np
 import math
@@ -22,14 +21,11 @@ def _eps_vp_neighborhood(m,point_id,eps):
     return neighbors
 
 def _eps_kd_neighborhood(m,point_id,eps):
-    tmp_data = m[point_id]
-    tmp_data = tmp_data[:, np.newaxis]
-    tmp_zero = np.zeros(((data.shape[1]-1), 2))
-    tmp_zero[:,:-1] = (tmp_data[1:] - eps)
-    tmp_zero[:,1:] = (tmp_data[1:] + eps)
-    tmp_data = tuple([tuple(tmp_zero[i]) for i in range(0,len(tmp_zero))])
-    neighbors = kdtree.query(tmp_data, tree)
-    return np.array(neighbors)[:0].tolist()
+    print "Query point: " + str(m[point_id][1:3])
+    point = m[point_id][1:3]
+    neighbors = tree.query(query_point=point,eps=eps)
+    print "neighbors:  " + str(neighbors)
+    return neighbors[:,:-2]
 
 def _region_query(structure, m, point_id, eps):
     n_points = m.shape[1]
@@ -40,7 +36,7 @@ def _region_query(structure, m, point_id, eps):
         seeds = ([x.idx for d,x in neighbors])
     elif structure == "kd":
         neighbors = _eps_kd_neighborhood(m, point_id, eps)
-        seeds = (neighbors)
+        seeds = neighbors
     else:
         for i in range(0, n_points):
             if not i == point_id:
@@ -83,7 +79,6 @@ def dbscan(structure, m, eps, min_points):
     if structure == 'base':
         start = 0
         n_points = m.shape[1]
-      
 
     cluster_id = 1
     classifications = [UNCLASSIFIED] * n_points
@@ -112,8 +107,12 @@ def main():
         results = dbscan(structure, data, eps, min_points)
     elif structure == 'kd':
         # Store the data in the KD Tree
-        points = [x[0:3] for x in  data]
-        tree = kdtree.kdtree(points)
+        points = data[:,:-1]
+        print "Points: --------------------------"
+        print str(np.array(points.tolist()))
+        print "----------------------------------"
+        print "Points: " + str(points[0])
+        tree = KDTree.construct_from_data(np.array(points)) 
         results = dbscan(structure, data, eps, min_points)
     elif structure == 'base':
         m = data[:,1:3].transpose()
