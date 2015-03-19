@@ -9,8 +9,6 @@ debug = False
 
 def square_distance(pointA, pointB):
     # squared euclidean distance
-    print "A: " + str(pointA)
-    print "B: " + str(pointB)
     A = pointA[1:]
     B = pointB
     return np.sum((A-B)**2)

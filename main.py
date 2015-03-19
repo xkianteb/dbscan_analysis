@@ -3,6 +3,8 @@ from kdtree import KDTree
 import vptree
 import numpy as np
 import math
+import matplotlib.pyplot as plt
+import random
 
 tree = []
 UNCLASSIFIED = False
@@ -21,11 +23,9 @@ def _eps_vp_neighborhood(m,point_id,eps):
     return neighbors
 
 def _eps_kd_neighborhood(m,point_id,eps):
-    print "Query point: " + str(m[point_id][1:3])
     point = m[point_id][1:3]
-    neighbors = tree.query(query_point=point,eps=eps)
-    print "neighbors:  " + str(neighbors)
-    return neighbors[:,:-2]
+    neighbors = np.array(tree.query(query_point=point,eps=eps**2))
+    return np.ravel(neighbors[:,:-2]).tolist()
 
 def _region_query(structure, m, point_id, eps):
     n_points = m.shape[1]
@@ -64,7 +64,6 @@ def _expand_cluster(structure, m, classifications, point_id, cluster_id, eps, mi
             if len(results) >= min_points:
                 for i in range(0, len(results)):
                     result_point = int(results[i])
-                    #print "Index: " + str(result_point)
                     if classifications[result_point] == UNCLASSIFIED or \
                        classifications[result_point] == NOISE:
                         if classifications[result_point] == UNCLASSIFIED:
@@ -88,11 +87,22 @@ def dbscan(structure, m, eps, min_points):
                 cluster_id = cluster_id + 1
     return classifications
 
+def num_to_color(nums):
+    graph = []
+    colors = {}
+    r = lambda: random.randint(0,255)
+    for x in nums:
+        number = x[0]
+        if not number in colors:
+            colors[number] = ('#%02X%02X%02X' % (r(),r(),r()))
+        graph.append(colors[number])
+    return graph
 
 def main(): 
     eps = float(sys.argv[1])
     min_points = int(sys.argv[2])
     structure = sys.argv[3]
+    plot = sys.argv[4]
 
     csv_import = np.loadtxt('data.csv',delimiter=',', skiprows=1)
     data = csv_import
@@ -108,10 +118,6 @@ def main():
     elif structure == 'kd':
         # Store the data in the KD Tree
         points = data[:,:-1]
-        print "Points: --------------------------"
-        print str(np.array(points.tolist()))
-        print "----------------------------------"
-        print "Points: " + str(points[0])
         tree = KDTree.construct_from_data(np.array(points)) 
         results = dbscan(structure, data, eps, min_points)
     elif structure == 'base':
@@ -122,6 +128,17 @@ def main():
     tmp = np.array(results)[:, np.newaxis]
     data[:,-1:] = tmp
     np.savetxt('output.csv', data, delimiter=',')
+ 
+    # Plot
+    if plot.lower() == 'true':
+        #color = np.array(['red','green','blue'])
+        X = data[:,1:2]
+        Y = data[:,2:3]
+        #C = np.ravel(color[(data[:,3:4].astype(int)-1)])
+        C = np.array(num_to_color(data[:,3:4].astype(int)))
+        print str(C)
+        plt.scatter(X, Y, color=C)
+        plt.show()
 
 if  __name__ =='__main__':
 	main()
