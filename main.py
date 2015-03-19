@@ -27,6 +27,7 @@ def _eps_kd_neighborhood(m,point_id,eps):
     neighbors = np.array(tree.query(query_point=point,eps=eps**2))
     return np.ravel(neighbors[:,:-2]).tolist()
 
+# Searchs a region for neighboring points
 def _region_query(structure, m, point_id, eps):
     n_points = m.shape[1]
     seeds = []
@@ -48,6 +49,8 @@ def _region_query(structure, m, point_id, eps):
         print "-----------------------------------------"
     return seeds
 
+# Expands the cluster to find neighboring points
+# of points in the cluster
 def _expand_cluster(structure, m, classifications, point_id, cluster_id, eps, min_points):
     seeds = _region_query(structure, m, point_id, eps)
     if len(seeds) < min_points:
@@ -72,6 +75,7 @@ def _expand_cluster(structure, m, classifications, point_id, cluster_id, eps, mi
             seeds = seeds[1:]
         return True
         
+# Core DBSCAN Algorithm
 def dbscan(structure, m, eps, min_points):
     start = 1
     n_points = m.shape[0]
@@ -87,6 +91,7 @@ def dbscan(structure, m, eps, min_points):
                 cluster_id = cluster_id + 1
     return classifications
 
+# Maps cluster id to random color
 def num_to_color(nums):
     graph = []
     colors = {}
@@ -131,12 +136,9 @@ def main():
  
     # Plot
     if plot.lower() == 'true':
-        #color = np.array(['red','green','blue'])
         X = data[:,1:2]
         Y = data[:,2:3]
-        #C = np.ravel(color[(data[:,3:4].astype(int)-1)])
         C = np.array(num_to_color(data[:,3:4].astype(int)))
-        print str(C)
         plt.scatter(X, Y, color=C)
         plt.show()
 

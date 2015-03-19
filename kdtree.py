@@ -23,8 +23,7 @@ class KDTreeNode():
         return (self.left == None and self.right == None)
 
 class KDTreeNeighbours():
-    """ Internal structure used in nearest-neighbours search.
-    """
+    # Internal structure used in nearest-neighbours search.
     def __init__(self,query_point,eps):
         self.query_point = query_point
         self.eps = eps # squared
@@ -45,19 +44,6 @@ class KDTreeNeighbours():
         return [element[0] for element in self.current_best]
         
 class KDTree():
-    """ KDTree implementation.
-    
-        Example usage:
-        
-            from kdtree import KDTree
-            
-            data = <load data> # iterable of points (which are also iterable, same length)
-            point = <the point of which neighbours we're looking for>
-            
-            tree = KDTree.construct_from_data(data)
-            nearest = tree.query(point, t=4) # find nearest 4 points
-    """
-    
     def __init__(self, data):
         def build_kdtree(point_list, depth):
             # code based on wikipedia article: http://en.wikipedia.org/wiki/Kd-tree
@@ -69,8 +55,6 @@ class KDTree():
             axis = (depth % k) + 1  # assumes all points have the same dimension
 
             # sort point list and choose median as pivot point,
-            # TODO: better selection method, linear-time selection, distribution
-            #point_list.sort(key=lambda point: point[axis])
             point_list = point_list[point_list[:,axis].argsort()]
             median = len(point_list)/2 # choose median
             if debug:
@@ -111,8 +95,6 @@ class KDTree():
                 statistics['leafs_reached'] += 1
                 best_neighbours.add(np.array(node.point))
                 return
-            
-            # this node is no leaf
             
             # select dimension for comparison (based on current depth)
             #axis = depth % len(query_point)
@@ -161,6 +143,7 @@ class KDTree():
             result = neighbours.get_best()
         else:
             result = []
-        
-        print statistics
+       
+        if debug: 
+            print statistics
         return result

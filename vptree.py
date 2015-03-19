@@ -5,10 +5,7 @@ import numpy as np
 import heapq
 
 class NDPoint(object):
-    """
-    A point in n-dimensional space
-    """
-
+    # A point in n-dimensional space
     def __init__(self, x, idx=None):
         self.x = np.array(x)
         self.idx = idx
@@ -16,11 +13,8 @@ class NDPoint(object):
         return "NDPoint(idx=%s, x=%s)" % (self.idx, self.x)
 
 class VPTree(object):
-    """
-    An efficient data structure to perform nearest-neighbor
-    search. 
-    """
-
+    # An efficient data structure to perform nearest-neighbor
+    # search. 
     def __init__(self, points, dist_fn=None):
         self.left = None
         self.right = None
@@ -74,12 +68,10 @@ def l2(p1, p2):
 
 ### Operations
 def get_nearest_neighbors(tree, q, k=1):
-    """
-    find k nearest neighbor(s) of q
-    :param tree:  vp-tree
-    :param q: a query point
-    :param k: number of nearest neighbors
-    """
+    # find k nearest neighbor(s) of q
+    # :param tree:  vp-tree
+    # :param q: a query point
+    # :param k: number of nearest neighbors
 
     # buffer for nearest neightbors
     neighbors = PriorityQueue(k)
@@ -117,12 +109,10 @@ def get_nearest_neighbors(tree, q, k=1):
 
 
 def get_all_in_range(tree, q, tau):
-    """
-    find all points within a given radius of point q
-    :param tree: vp-tree
-    :param q: a query point
-    :param tau: the maximum distance from point q
-    """
+    # find all points within a given radius of point q
+    # :param tree: vp-tree
+    # :param q: a query point
+    # :param tau: the maximum distance from point q
 
     # buffer for nearest neightbors
     neighbors = []
@@ -153,20 +143,4 @@ def get_all_in_range(tree, q, tau):
             if d < node.mu + tau:
                 visit_stack.append(node.left)
     return neighbors
-
-
-
-if __name__ == '__main__':
-    X = np.random.uniform(0, 100000, size=10000)
-    Y = np.random.uniform(0, 100000, size=10000)
-    points = [NDPoint(x,i) for i, x in  enumerate(zip(X,Y))]
-    tree = VPTree(points)
-    q = NDPoint([300,300])
-    neighbors = get_nearest_neighbors(tree, q, 5)
-
-    print "query:"
-    print "\t", q
-    print "nearest neighbors: "
-    for d, n in neighbors:
-        print "\t", n
 
